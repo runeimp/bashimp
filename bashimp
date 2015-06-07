@@ -3,7 +3,7 @@
 # BASHimp - BASH Script Initializer
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.1.0
+# @version  0.2.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,14 +13,15 @@
 ###
 # ChangeLog:
 # ----------
-# 2015-06-07	v0.1.0	Initial script creation
+# 2015-06-07	v0.2.0      Added expunge to the command list
+# 2015-06-07	v0.1.0      Initial script creation
 #
 
 BASHIMP_ADMIN_MODE=false
 BASHIMP_INIT=""
 BASHIMP_PATH="$HOME/bin"
 BASHIMP_KILL=""
-BASHIMP_VER_NUMBER='0.1.0'
+BASHIMP_VER_NUMBER='0.2.0'
 BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 
 #
