@@ -47,10 +47,10 @@ $BASHIMP_VER_LABEL
 bashimp [OPTIONS]
 
   Commands:
-    help                              Display this help
-    codes | errors                    Display error codes
-    create | add | init SCRIPT_NAME   Create/Initialize the named BASH script
-    delete | rem | kill SCRIPT_NAME   Delete/Remove the named BASH script. Will ask for verification.
+    help                                        Display this help
+    codes | errors                              Display error codes
+    create | add | init SCRIPT_NAME             Create/Initialize the named BASH script
+    delete | rem | kill | expunge SCRIPT_NAME   Delete/Remove the named BASH script. Will ask for verification.
 
   Options:
     -a, --admin     Use Admin/Multi-User mode
@@ -133,7 +133,7 @@ do
 			BASHIMP_INIT="$2"
 			eval "$(option_required $#)"
 			;;
-		delete | rem | kill)
+		delete | rem | kill | expunge)
 			BASHIMP_KILL="$2"
 			eval "$(option_required $#)"
 			;;
