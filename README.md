@@ -1,0 +1,2 @@
+# bashimp
+BASH Script Initializer
