@@ -13,16 +13,27 @@
 ###
 # ChangeLog:
 # ----------
-# 2015-06-07	v0.2.0      Added expunge to the command list
-# 2015-06-07	v0.1.0      Initial script creation
+# 2015-06-08	v0.2.0      Added the find command. Added the -f and --find, -i and --interpreter, and -p and --posix switches.
+#                           Added the loading of a user configuration file. Updated help.
+# 2015-06-07	v0.1.0		Initial script creation
+# 
+###
+# ToDo:
+# -----
+# [ ] Add functionality for extended option parsing
 #
 
+BASHIMP_AUTHOR=""
 BASHIMP_ADMIN_MODE=false
 BASHIMP_INIT=""
-BASHIMP_PATH="$HOME/bin"
+BASHIMP_INTERPRETER="/usr/bin/env bash"
+BASHIMP_LICENSES=""
 BASHIMP_KILL=""
+BASHIMP_PATH="$HOME/bin"
 BASHIMP_VER_NUMBER='0.2.0'
 BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
+
+[ -r "${HOME}/.config/bashimp.cfg" ] && source "${HOME}/.config/bashimp.cfg"
 
 #
 # BASHimp Codes
@@ -48,15 +59,26 @@ $BASHIMP_VER_LABEL
 bashimp [OPTIONS]
 
   Commands:
-    help                                        Display this help
-    codes | errors                              Display error codes
-    create | add | init SCRIPT_NAME             Create/Initialize the named BASH script
-    delete | rem | kill | expunge SCRIPT_NAME   Delete/Remove the named BASH script. Will ask for verification.
+    code                    Display exit codes.
+    init SCRIPT_NAME        Initialize the named BASH script.
+    kill SCRIPT_NAME        Expunge the named BASH script.
+                            Will ask for verification.
+    find INTERPRETER_NAME   Display a local path for the specified
+                            interpreter name.
+    help                    Display this help.
 
   Options:
-    -a, --admin     Use Admin/Multi-User mode
-    -h, --help      Display this help
-    -v, --version   Print out BASHimp version
+    -a, --admin                     Use Admin/Multi-User mode.
+    -e, --env INTERPRETER_NAME      Use specified interpreter name after
+                                    /usr/bin/env when initializing the script.
+    -f, --find INTERPRETER_NAME     Find a local path for the specified
+                                    interpreter name and use it when
+                                    initializing the script.
+    -h, --help                      Display this help.
+    -i, --interpreter               Specify the full path for initializing the interpreter.
+    -p, --posix                     Find a POSIX compliant interpreter and use it's path when
+                                    initializing the script.
+    -v, --version                   Print out BASHimp version.
  
 BASHIMPOED`
 
@@ -66,13 +88,51 @@ BASHIMPOED`
 
 create_script()
 {
-	exec > "${BASHIMP_PATH}/$BASHIMP_INIT"
-	echo "#!/usr/bin/env bash"
+	exec > "${BASHIMP_PATH}/${BASHIMP_INIT}"
+	echo "#!${BASHIMP_INTERPRETER}"
 	echo "###################"
-	echo "# $BASHIMP_INIT v0.1.0"
+	echo "# ${BASHIMP_INIT} v0.1.0"
+	echo "#"
+	[ ! -z "${BASHIMP_AUTHOR}" ] && echo "# @author ${BASHIMP_AUTHOR}"
+	[ ! -z "${BASHIMP_LICENSES}" ] && echo "# @licenses ${BASHIMP_LICENSES}"
+	echo "#"
 	echo "#"
 	echo
 	echo
+}
+
+find_shell()
+{
+	shopt -s nocasematch
+
+	case "$1" in
+		POSIX)
+			if [ ! -z "$(which bash)" ]; then
+				BASHIMP_INTERPRETER="$(which bash)"
+			elif [ ! -z "$(which ksh)" ]; then
+				BASHIMP_INTERPRETER="$(which ksh)"
+			elif [ ! -z "$(which posh)" ]; then
+				BASHIMP_INTERPRETER="$(which posh)"
+			elif [ -x '/usr/xpg4/bin/sh' ]; then
+				BASHIMP_INTERPRETER='/usr/xpg4/bin/sh'
+			elif [ ! -z "$(which dash)" ]; then
+				BASHIMP_INTERPRETER="$(which dash)"
+			elif [ ! -z "$(which sh)" ]; then
+				BASHIMP_INTERPRETER="$(which sh)"
+			else
+				BASHIMP_INTERPRETER='/bin/sh'
+			fi
+			;;
+		*)
+			if [ ! -z "$(which "$1")" ]; then
+				BASHIMP_INTERPRETER="$(which "$1")"
+			else
+				BASHIMP_INTERPRETER='/bin/sh'
+			fi
+			;;
+	esac
+
+	shopt -u nocasematch
 }
 
 option_required()
@@ -122,11 +182,7 @@ shopt -s nocasematch
 while [ $# -gt 0 ]
 do
 	case "$1" in
-		help | -h | --help)
-			show_help
-			exit 0
-			;;
-		codes | errors)
+		codes | errors | code)
 			show_codes
 			exit 0
 			;;
@@ -134,17 +190,42 @@ do
 			BASHIMP_INIT="$2"
 			eval "$(option_required $#)"
 			;;
-		delete | rem | kill | expunge)
+		delete | rem | kill)
 			BASHIMP_KILL="$2"
 			eval "$(option_required $#)"
 			;;
-		-v | --version)
-			echo $BASHIMP_VER_LABEL
-			exit 0
+		find)
+			find_shell $2
+			echo "${BASHIMP_INTERPRETER}"
+			eval "$(option_required $#)"
 			;;
 		-a | --admin) # Admin Mode. Setup script for all users
 			BASHIMP_ADMIN_MODE=true
 			eval "$(shift_break $#)"
+			;;
+		-e | --env)
+			BASHIMP_INTERPRETER="/usr/bin/env $2"
+			eval "$(option_required $#)"
+			;;
+		-f | --find)
+			find_shell $2
+			eval "$(option_required $#)"
+			;;
+		help | -h | --help)
+			show_help
+			exit 0
+			;;
+		-i | --interpreter)
+			BASHIMP_INTERPRETER="$2"
+			eval "$(option_required $#)"
+			;;
+		-p | --posix)
+			find_shell 'POSIX'
+			eval "$(shift_break $#)"
+			;;
+		-v | --version)
+			echo $BASHIMP_VER_LABEL
+			exit 0
 			;;
 		--) # End of options
 			shift
