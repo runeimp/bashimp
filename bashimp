@@ -3,7 +3,7 @@
 # BASHimp - BASH Script Initializer
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.3.0
+# @version  0.4.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,6 +13,7 @@
 ###
 # ChangeLog:
 # ----------
+# 2015-06-09	v0.4.0		Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
 # 2015-06-08	v0.3.0      Added the find command. Added the -f and --find, -i and --interpreter, and -p and --posix switches.
 #                           Added the loading of a user configuration file. Updated help.
 # 2015-06-07	v0.2.0      Added expunge to the command list
@@ -26,12 +27,13 @@
 
 BASHIMP_AUTHOR=""
 BASHIMP_ADMIN_MODE=false
+BASHIMP_EDITOR=""
 BASHIMP_INIT=""
 BASHIMP_INTERPRETER="/usr/bin/env bash"
 BASHIMP_LICENSES=""
 BASHIMP_KILL=""
 BASHIMP_PATH="$HOME/bin"
-BASHIMP_VER_NUMBER='0.3.0'
+BASHIMP_VER_NUMBER='0.4.0'
 BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 
 [ -r "${HOME}/.config/bashimp.cfg" ] && source "${HOME}/.config/bashimp.cfg"
@@ -47,6 +49,7 @@ Error Codes:
  2 = Unknown option
  3 = Option missing value argument
  4 = File not found (to delete)
+ 5 = No text editor found
  
 BASHIMPOED`
 
@@ -89,6 +92,7 @@ BASHIMPOED`
 
 create_script()
 {
+	exec 3<&1
 	exec > "${BASHIMP_PATH}/${BASHIMP_INIT}"
 	echo "#!${BASHIMP_INTERPRETER}"
 	echo "###################"
@@ -100,6 +104,7 @@ create_script()
 	echo "#"
 	echo
 	echo
+	exec 1<&3 3<&-
 }
 
 find_shell()
@@ -270,6 +275,7 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 	if [ ! -f "${BASHIMP_PATH}/$BASHIMP_INIT" ]; then
 		create_script
 	else
+		
 		printf "  The file $BASHIMP_INIT already exists. Do you wish to continue? [yes/NO] (n) "
 		overwrite='no'
 		read overwrite
@@ -290,9 +296,27 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 		chmod u+x "${BASHIMP_PATH}/$BASHIMP_INIT"
 	fi
 
+	# Choose script in editor if none defined
+	if [ -z "${BASHIMP_EDITOR}" ]; then
+		if [ ! -z "$VISUAL" ]; then
+			BASHIMP_EDITOR="$VISUAL"
+		elif [ ! -z "$GIT_EDITOR" ]; then
+			BASHIMP_EDITOR="$GIT_EDITOR"
+		elif [ ! -z "$EDITOR" ]; then
+			BASHIMP_EDITOR="$EDITOR"
+		elif [ ! -z "`which subl`" ]; then
+			BASHIMP_EDITOR=`which subl`
+		else
+			BASHIMP_EDITOR=`which vi`
+		fi
+	fi
+
 	# Launch script in editor
-	if [ ! -z "$VISUAL" ]; then
-		"$VISUAL" "${BASHIMP_PATH}/$BASHIMP_INIT"
+	if [ ! -z "${BASHIMP_EDITOR}" ]; then
+		"${BASHIMP_EDITOR}" "${BASHIMP_PATH}/${BASHIMP_INIT}"
+	else
+		echo "No BASHIMP_EDITOR defined or found." 1>&2
+		exit 5
 	fi
 
 elif [ ! -z "$BASHIMP_KILL" ]; then

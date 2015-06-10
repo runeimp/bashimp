@@ -14,7 +14,7 @@ Usage
 
 The above will initialize a file named test-script with the following contents
 
-```
+``` bash
 #!/usr/bin/env bash
 ###################
 # test-script v0.1.0
@@ -30,14 +30,18 @@ The file will automatically be opened in the editor specified by your VISUAL env
 
 ### Expunge Script
 
-`$ bashimp kill test-script`
+``` bash
+$ bashimp kill test-script
+  Are you sure you want to expunge test-script from this computer [yes/NO] (n) y
+Expunging /Users/mgardner/bin/test-script
+```
 
 The above will ask for verification that you want to expunge the file and then delete the file from your system.
 
 BASHimp Help
 ------------
 
-```
+``` bash
 bashimp [OPTIONS]
 
   Commands:
@@ -68,9 +72,12 @@ BASHimp Configuration
 
 You can create a user configuration file at `~/.config/bashimp.cfg` with the following variables to change the defaults used by BASHimp. The following shows the normal defaults.
 
-```
+``` bash
 BASHIMP_AUTHOR=""
 BASHIMP_ADMIN_MODE=false
+# BASHIMP_EDITOR actually defaults to VISUAL, GIT_EDITOR, EDITOR,
+# then tries to locate subl then vi.
+BASHIMP_EDITOR="/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl"
 BASHIMP_INTERPRETER="/usr/bin/env bash"
 BASHIMP_LICENSES=""
 BASHIMP_PATH="$HOME/bin"
@@ -82,6 +89,6 @@ If BASHIMP_AUTHOR or BASHIMP_LICENSES are defined they will be added to the scri
 
 * [X] Allow specification of Shebangs other than `#!/usr/bin/env bash`
 * [X] Parse a configuration file for defaults
-* [ ] Also check EDITOR, and GIT_EDITOR if VISUAL is not defined in your environment
+* [X] Also check EDITOR, and GIT_EDITOR if VISUAL is not defined in your environment
 * [ ] Add functionality for extended option parsing when sourced into another script
 * [ ] Setup editing of the header comment template
