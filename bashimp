@@ -3,7 +3,7 @@
 # BASHimp - BASH Script Initializer
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.4.0
+# @version  0.5.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,6 +13,7 @@
 ###
 # ChangeLog:
 # ----------
+# 2015-06-12	v0.5.0		Beginnings of OPTIONimp AKA BASHimp Beast Mode!
 # 2015-06-09	v0.4.0		Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
 # 2015-06-08	v0.3.0      Added the find command. Added the -f and --find, -i and --interpreter, and -p and --posix switches.
 #                           Added the loading of a user configuration file. Updated help.
@@ -25,16 +26,36 @@
 # [ ] Add functionality for extended option parsing
 #
 
+BASHIMP_AS_OPTIMP=`basename "$0"`
 BASHIMP_AUTHOR=""
 BASHIMP_ADMIN_MODE=false
 BASHIMP_EDITOR=""
+BASHIMP_END_OPTIONS=false
 BASHIMP_INIT=""
 BASHIMP_INTERPRETER="/usr/bin/env bash"
 BASHIMP_LICENSES=""
 BASHIMP_KILL=""
 BASHIMP_PATH="$HOME/bin"
-BASHIMP_VER_NUMBER='0.4.0'
+BASHIMP_VER_NUMBER='0.5.0'
 BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
+
+# one, -f, --two: $format required Specify format string
+# -t, --three: $template optional Specify template string or path
+# --four: $forth bool Specify forth dimension
+# five: $five bool Execute five times
+# -s, --six: $sexy_time required Value for Sexy Time
+# declare -a BASHIMP_OPTARG_NAMES=('format' 'format' 'format' 'template' 'template' 'forth' 'five' 'sexy_time')
+# declare -a BASHIMP_OPTARGS_REQUIRED=(true true true false false	false false true true)
+# declare -a BASHIMP_OPTARGS_OPTIONAL=(false false false true true false false false false)
+# declare -a BASHIMP_OPTION_DOCS=('one, -f, --two' 'Specify format string' '-t, --three' 'Specify template string or path' '--four' 'Specify forth dimension' 'five' 'Execute five times' '-s, --six' 'Value for Sexy Time')
+# declare -a BASHIMP_OPTION_NAMES=(one f two  t three four five s six)
+# declare -a BASHIMP_OPTION_TYPES=('command' 'short switch' 'long switch' 'short switch' 'long switch' 'long switch' 'command' 'short switch' 'long switch')
+
+if [ "$BASHIMP_AS_OPTIMP" == 'bashimp' ]; then
+	BASHIMP_AS_OPTIMP=false
+else
+	BASHIMP_AS_OPTIMP=true
+fi
 
 [ -r "${HOME}/.config/bashimp.cfg" ] && source "${HOME}/.config/bashimp.cfg"
 
@@ -50,7 +71,7 @@ Error Codes:
  3 = Option missing value argument
  4 = File not found (to delete)
  5 = No text editor found
- 
+
 BASHIMPOED`
 
 
@@ -90,7 +111,29 @@ BASHIMPOED`
 # BASHimp Functions
 #
 
-create_script()
+bashimp_array_find()
+{
+	local array=("${!1}")
+	local count=${#array[@]}
+	local value="$2"
+	local i=1
+	local item
+	if [ -n "$value" ]; then
+		# echo "bashimp_array_find() -- \${array[@]}: ${array[@]} -- \$count: $count -- \${value}: '${value}'"
+		for item in "${array[@]}"
+		do
+			# echo "bashimp_array_find() -- \${item}: ${item} -- \$i: $i"
+			if [ "$item" == "$value" ]; then
+				return $i
+			fi
+			let "i += 1"
+		done
+	fi
+
+	return 0
+}
+
+bashimp_create_script()
 {
 	exec 3<&1
 	exec > "${BASHIMP_PATH}/${BASHIMP_INIT}"
@@ -107,7 +150,7 @@ create_script()
 	exec 1<&3 3<&-
 }
 
-find_shell()
+bashimp_find_shell()
 {
 	shopt -s nocasematch
 
@@ -141,9 +184,96 @@ find_shell()
 	shopt -u nocasematch
 }
 
-option_required()
+bashimp_option_arg_type()
 {
-	# echo "option_required() $1"
+	if [ "${BASHIMP_OPTARGS_REQUIRED[$1]}" == 'true' ]; then
+		echo 'required'
+	elif [ "${BASHIMP_OPTARGS_OPTIONAL[$1]}" == 'true' ]; then
+		echo 'optional'
+	elif [ "${BASHIMP_OPTARGS_REQUIRED[$1]}" == 'false' ] && [ "${BASHIMP_OPTARGS_OPTIONAL[$1]}" == 'false' ]; then
+		echo 'boolean'
+	else
+		echo 'empty'
+	fi
+}
+
+bashimp_option_check()
+{
+	# local array=("${!1}")
+	local option="$1"
+	local optarg="$2"
+	option="$(echo -e "${option}" | sed -e 's/^[[:space:]]*//' | sed -e 's/[[:space:]]*$//')"
+	bashimp_array_find BASHIMP_OPTION_NAMES[@] "$option"
+	index=$?
+	if [ $index -gt 0 ]; then
+		let "index -= 1"
+	else
+		echo "Unknown option: '$option'"
+		exit 2
+	fi
+
+	arg_type=$(bashimp_option_arg_type $index)
+	case "$arg_type" in
+	required)
+		opt_type=$(bashimp_option_type "$optarg")
+		if [ "${opt_type}" == 'NON_SWITCH' ]; then
+			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'="'${optarg}'"'
+		else
+			echo "Option argument for \$${BASHIMP_OPTARG_NAMES[$index]} is required" 1>&2
+			exit 3
+		fi
+		;;
+	optional)
+		opt_type=$(bashimp_option_type "$optarg")
+		if [ "${opt_type}" == 'NON_SWITCH' ]; then
+			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'="'${optarg}'"'
+		else
+			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'=true'
+		fi
+		;;
+	boolean)
+		echo eval "${BASHIMP_OPTARG_NAMES[$index]}=true"
+		;;
+	*)
+		echo "Unknown argument type: ${arg_type}"
+		;;
+	esac
+
+	echo "Found ${BASHIMP_OPTION_TYPES[$index]} match for \$${BASHIMP_OPTARG_NAMES[$index]} (${arg_type}) [${index}]"
+}
+
+bashimp_option_type()
+{
+	local tmp="$1"
+	if [ -n "$tmp" ]; then
+		case "${tmp:0:1}" in
+		-)
+			if [ "${tmp:0:2}" == '--' ]; then
+				if [ ${#tmp} -eq 2 ]; then
+					echo 'END_OF_OPTIONS'
+				else
+					echo 'LONG_SWITCH'
+				fi
+			else
+				if [ ${#tmp} -eq 1 ]; then
+					echo 'STD_INPUT'
+				else
+					echo 'SHORT_SWITCH'
+				fi
+			fi
+			;;
+		*)
+			echo 'NON_SWITCH'
+			;;
+		esac
+	else
+		echo 'EMPTY_NULL'
+	fi
+}
+
+bashimp_option_required()
+{
+	# echo "bashimp_option_required() $1"
 	if [ $1 -lt 2 ]; then
 		echo "echo '  Missing value argument' 1>&2 && exit 3"
 	else
@@ -151,9 +281,9 @@ option_required()
 	fi
 }
 
-shift_break()
+bashimp_shift_break()
 {
-	# echo "shift_break() $1"
+	# echo "bashimp_shift_break() $1"
 	if [ $1 -gt 1 ]; then
 		echo shift
 	else
@@ -161,14 +291,14 @@ shift_break()
 	fi
 }
 
-show_codes()
+bashimp_show_codes()
 {
 	cat <<- _CAT_
 	$BASHIMP_ERRORS
 	_CAT_
 }
 
-show_help()
+bashimp_show_help()
 {
 	cat <<- _CAT_
 	$BASHIMP_HELP
@@ -177,75 +307,127 @@ show_help()
 
 
 if [ $# -eq 0 ]; then
-	show_help
+	bashimp_show_help
 	exit 1
 fi
 
-old_case=$(shopt nocasematch)
-shopt -s nocasematch
+if [ $BASHIMP_AS_OPTIMP == true ]; then
+	echo "OPTIONimp Loop"
+	until [ -z "$1" ]
+	do
+		case "$1" in
+			-h | --help)
+				bashimp_show_help
+				exit 0
+				;;
+			-v | --version)
+				echo $BASHIMP_VER_LABEL
+				exit 0
+				;;
+			--) # End of options
+				BASHIMP_END_OPTIONS=true
+				shift
+				break
+				;;
+			--*)
+				switch_name="${1:2}"
+				bashimp_option_check "${switch_name}" "$2"
 
-# echo 'BASHimp Loop'
-while [ $# -gt 0 ]
-do
-	case "$1" in
-		codes | errors | code)
-			show_codes
-			exit 0
-			;;
-		create | add | init)
-			BASHIMP_INIT="$2"
-			eval "$(option_required $#)"
-			;;
-		delete | rem | kill | expunge)
-			BASHIMP_KILL="$2"
-			eval "$(option_required $#)"
-			;;
-		find)
-			find_shell $2
-			echo "${BASHIMP_INTERPRETER}"
-			eval "$(option_required $#)"
-			;;
-		-a | --admin) # Admin Mode. Setup script for all users
-			BASHIMP_ADMIN_MODE=true
-			eval "$(shift_break $#)"
-			;;
-		-e | --env)
-			BASHIMP_INTERPRETER="/usr/bin/env $2"
-			eval "$(option_required $#)"
-			;;
-		-f | --find)
-			find_shell $2
-			eval "$(option_required $#)"
-			;;
-		help | -h | --help)
-			show_help
-			exit 0
-			;;
-		-i | --interpreter)
-			BASHIMP_INTERPRETER="$2"
-			eval "$(option_required $#)"
-			;;
-		-p | --posix)
-			find_shell 'POSIX'
-			eval "$(shift_break $#)"
-			;;
-		-v | --version)
-			echo $BASHIMP_VER_LABEL
-			exit 0
-			;;
-		--) # End of options
-			shift
-			break
-			;;
-		*)
-			echo "Unknown option: $1" 1>&2
-			exit 2
-			;;
-	esac
-done
+				shift
+				;;
+			-*)
+				switch_name="${1:1}"
+				if [ ${#switch_name} -gt 1 ]; then
+					len=${#switch_name}
+					declare -a switch_list
+					for ((i=0; i < $len; i++))
+					do
+						switch_list[$i]="${switch_name:$i:1}"
+						bashimp_option_check "${switch_name:$i:1}" "$2"
+					done
+				else
+					bashimp_option_check "${switch_name}" "$2"
+				fi
 
-if [[ "$old_case" =~ nocasematch.+off ]]; then
-	shopt -u nocasematch
+				shift
+				;;
+			*)
+				bashimp_option_check "$1" "$2"
+
+				shift
+				# echo "Unknown option: $1" 1>&2
+				# exit 2
+				;;
+		esac
+	done
+else
+	# echo 'BASHimp Loop'
+
+	old_case=$(shopt nocasematch)
+	shopt -s nocasematch
+
+	until [ -z "$1" ]
+	do
+		case "$1" in
+			codes | errors | code)
+				bashimp_show_codes
+				exit 0
+				;;
+			create | add | init)
+				BASHIMP_INIT="$2"
+				eval "$(bashimp_option_required $#)"
+				;;
+			delete | rem | kill | expunge)
+				BASHIMP_KILL="$2"
+				eval "$(bashimp_option_required $#)"
+				;;
+			find)
+				bashimp_find_shell $2
+				echo "${BASHIMP_INTERPRETER}"
+				eval "$(bashimp_option_required $#)"
+				;;
+			-a | --admin) # Admin Mode. Setup script for all users
+				BASHIMP_ADMIN_MODE=true
+				eval "$(bashimp_shift_break $#)"
+				;;
+			-e | --env)
+				BASHIMP_INTERPRETER="/usr/bin/env $2"
+				eval "$(bashimp_option_required $#)"
+				;;
+			-f | --find)
+				bashimp_find_shell $2
+				eval "$(bashimp_option_required $#)"
+				;;
+			help | -h | --help)
+				bashimp_show_help
+				exit 0
+				;;
+			-i | --interpreter)
+				BASHIMP_INTERPRETER="$2"
+				eval "$(bashimp_option_required $#)"
+				;;
+			-p | --posix)
+				bashimp_find_shell 'POSIX'
+				eval "$(bashimp_shift_break $#)"
+				;;
+			-v | --version)
+				echo $BASHIMP_VER_LABEL
+				exit 0
+				;;
+			--) # End of options
+				shift
+				break
+				;;
+			*)
+				echo "Unknown option: $1" 1>&2
+				exit 2
+				;;
+		esac
+	done
+
+	if [[ "$old_case" =~ nocasematch.+off ]]; then
+		shopt -u nocasematch
+	fi
 fi
 
 #
@@ -273,7 +455,7 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 
 	# Create script or ask if it already exists
 	if [ ! -f "${BASHIMP_PATH}/$BASHIMP_INIT" ]; then
-		create_script
+		bashimp_create_script
 	else
 		
 		printf "  The file $BASHIMP_INIT already exists. Do you wish to continue? [yes/NO] (n) "
@@ -282,7 +464,7 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 		case "$overwrite" in
 		[Yy] | [Yy][Ee][Ss])
 			echo "Overwriting $BASHIMP_INIT"
-			create_script
+			bashimp_create_script
 			;;
 		*)
 			echo "Another time maybe..."
