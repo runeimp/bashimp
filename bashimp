@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 ###################
-# BASHimp - BASH Script Initializer
+# BASHimp - BASH Script Initializer and Option Parser
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.5.0
+# @version  0.6.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,12 +13,13 @@
 ###
 # ChangeLog:
 # ----------
-# 2015-06-12	v0.5.0		Beginnings of OPTIONimp AKA BASHimp Beast Mode!
-# 2015-06-09	v0.4.0		Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
+# 2015-06-14	v0.6.0      Initial version with a working OPTIONimp mode.
+# 2015-06-12	v0.5.0      Beginnings of OPTIONimp AKA BASHimp Beast Mode!
+# 2015-06-09	v0.4.0      Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
 # 2015-06-08	v0.3.0      Added the find command. Added the -f and --find, -i and --interpreter, and -p and --posix switches.
 #                           Added the loading of a user configuration file. Updated help.
 # 2015-06-07	v0.2.0      Added expunge to the command list
-# 2015-06-07	v0.1.0		Initial script creation
+# 2015-06-07	v0.1.0      Initial script creation
 # 
 ###
 # ToDo:
@@ -36,76 +37,145 @@ BASHIMP_INTERPRETER="/usr/bin/env bash"
 BASHIMP_LICENSES=""
 BASHIMP_KILL=""
 BASHIMP_PATH="$HOME/bin"
-BASHIMP_VER_NUMBER='0.5.0'
-BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 
-# one, -f, --two: $format required Specify format string
-# -t, --three: $template optional Specify template string or path
-# --four: $forth bool Specify forth dimension
-# five: $five bool Execute five times
-# -s, --six: $sexy_time required Value for Sexy Time
-# declare -a BASHIMP_OPTARG_NAMES=('format' 'format' 'format' 'template' 'template' 'forth' 'five' 'sexy_time')
-# declare -a BASHIMP_OPTARGS_REQUIRED=(true true true false false	false false true true)
-# declare -a BASHIMP_OPTARGS_OPTIONAL=(false false false true true false false false false)
-# declare -a BASHIMP_OPTION_DOCS=('one, -f, --two' 'Specify format string' '-t, --three' 'Specify template string or path' '--four' 'Specify forth dimension' 'five' 'Execute five times' '-s, --six' 'Value for Sexy Time')
-# declare -a BASHIMP_OPTION_NAMES=(one f two  t three four five s six)
-# declare -a BASHIMP_OPTION_TYPES=('command' 'short switch' 'long switch' 'short switch' 'long switch' 'long switch' 'command' 'short switch' 'long switch')
-
+#
+# Setup version info and help defaults
+#
 if [ "$BASHIMP_AS_OPTIMP" == 'bashimp' ]; then
+	BASHIMP_VER_NUMBER='0.6.0'
+	BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 	BASHIMP_AS_OPTIMP=false
 else
+	if [ -z "$BASHIMP_HELP" ]; then
+		if [ -z "$BASHIMP_VER_LABEL" ]; then
+			[ -z "$BASHIMP_VER_NUMBER" ] && BASHIMP_VER_NUMBER='0.0.0'
+			BASHIMP_VER_LABEL="$BASHIMP_AS_OPTIMP v$BASHIMP_VER_NUMBER"
+		fi
+		BASHIMP_HELP="$BASHIMP_VER_LABEL"
+	fi
 	BASHIMP_AS_OPTIMP=true
 fi
 
+#
+# Load the BASHimp user config file if exists and is readable
+#
 [ -r "${HOME}/.config/bashimp.cfg" ] && source "${HOME}/.config/bashimp.cfg"
 
 #
 # BASHimp Codes
 #
-BASHIMP_ERRORS=`cat <<BASHIMPOED
-$BASHIMP_VER_LABEL
+if [ -z "$BASHIMP_HELP" ]; then
+	read -r -d '' BASHIMP_ERRORS <<-EOD
+	$BASHIMP_VER_LABEL
 
-Error Codes:
- 1 = No options provided
- 2 = Unknown option
- 3 = Option missing value argument
- 4 = File not found (to delete)
- 5 = No text editor found
-
-BASHIMPOED`
-
+	Error Codes:
+	 1 = No options provided
+	 2 = Unknown option
+	 3 = Option missing value argument
+	 4 = File not found (to delete)
+	 5 = No text editor found
+	 6 = Bad line in OPTIONIMP_CONF configuration
+	 7 = Bad option variable type in OPTIONIMP_CONF
+	 8 = Unknown option argument type
+	EOD
+fi
 
 #
 # BASHimp Help
 #
-BASHIMP_HELP=`cat <<BASHIMPOED
-$BASHIMP_VER_LABEL
+if [ -z "$BASHIMP_HELP" ]; then
+	echo "Defining BASHIMP_HELP since $BASHIMP_HELP"
+	read -r -d '' BASHIMP_HELP <<-EOD
+	$BASHIMP_VER_LABEL
 
-bashimp [OPTIONS]
+	bashimp [OPTIONS]
 
-  Commands:
-    code                    Display exit codes.
-    init SCRIPT_NAME        Initialize the named BASH script.
-    kill SCRIPT_NAME        Expunge the named BASH script.
-                            Will ask for verification.
-    find INTERPRETER_NAME   Display a local path for the specified
-                            interpreter name.
-    help                    Display this help.
+	  Commands:
+	    code                    Display exit codes.
+	    init SCRIPT_NAME        Initialize the named BASH script.
+	    kill SCRIPT_NAME        Expunge the named BASH script.
+	                            Will ask for verification.
+	    find INTERPRETER_NAME   Display a local path for the specified
+	                            interpreter name.
+	    help                    Display this help.
 
-  Options:
-    -a, --admin                     Use Admin/Multi-User mode.
-    -e, --env INTERPRETER_NAME      Use specified interpreter name after
-                                    /usr/bin/env when initializing the script.
-    -f, --find INTERPRETER_NAME     Find a local path for the specified
-                                    interpreter name and use it when
-                                    initializing the script.
-    -h, --help                      Display this help.
-    -i, --interpreter               Specify the full path for initializing the interpreter.
-    -p, --posix                     Find a POSIX compliant interpreter and use it's path when
-                                    initializing the script.
-    -v, --version                   Print out BASHimp version.
- 
-BASHIMPOED`
+	  Options:
+	    -a, --admin                     Use Admin/Multi-User mode.
+	    -e, --env INTERPRETER_NAME      Use specified interpreter name after
+	                                    /usr/bin/env when initializing the script.
+	    -f, --find INTERPRETER_NAME     Find a local path for the specified
+	                                    interpreter name and use it when
+	                                    initializing the script.
+	    -h, --help                      Display this help.
+	    -i, --interpreter               Specify the full path for initializing the interpreter.
+	    -p, --posix                     Find a POSIX compliant interpreter and use it's path when
+	                                    initializing the script.
+	    -v, --version                   Print out BASHimp version.
+
+	Be sure to source this script for robust option parsing!
+	EOD
+fi
+
+if [ -n "$OPTIONIMP_CONF" ]; then
+	# printf "\$OPTIONIMP_CONF:\n%s\n\n" "$OPTIONIMP_CONF"
+
+	unset OPTIONIMP_OPTION_NAMES
+	declare -a OPTIONIMP_OPTION_NAMES
+	while read -r line
+	do
+		# echo "\$line: $line"
+		if [[ "$line" =~ ([[:alpha:],_ -]+)[[:blank:]]+\$([[:alpha:]_]+)[[:blank:]]+([[:alpha:]]+)[[:blank:]]+(.+) ]]; then
+			# echo "\${BASH_REMATCH[1]}: '${BASH_REMATCH[1]}' -- \${BASH_REMATCH[2]}: '${BASH_REMATCH[2]}' -- \${BASH_REMATCH[3]}: '${BASH_REMATCH[3]}' -- \${BASH_REMATCH[4]}: '${BASH_REMATCH[4]}'"
+			optvar_name="${BASH_REMATCH[2]}"
+			optvar_type="${BASH_REMATCH[3]}"
+
+			shopt -s nocasematch
+			case "$optvar_type" in
+				r | req | required)
+					optvar_type=required
+					;;
+				o | opt | optional)
+					optvar_type=optional
+					;;
+				b | bool | boolean)
+					optvar_type=boolean
+					;;
+				*)
+					echo "Bad option variable type: ${optvar_type}" 1>&2
+					exit 7
+					;;
+			esac
+			shopt -u nocasematch
+
+			while IFS=', ' read -r -a options; do
+				for option_name in "${options[@]}"; do
+					case "$option_name" in
+						--*)
+							option_name=${option_name:2}
+							option_type='long switch'
+							;;
+						-*)
+							option_name=${option_name:1}
+							option_type='short switch'
+							;;
+						 *)
+							option_type='command'
+							;;
+					esac
+					OPTIONIMP_OPTION_DOCS=( "${OPTIONIMP_OPTION_DOCS[@]}" "${line}" )
+					OPTIONIMP_OPTION_NAMES=( "${OPTIONIMP_OPTION_NAMES[@]}" "${option_name}" )
+					OPTIONIMP_OPTION_TYPES=( "${OPTIONIMP_OPTION_TYPES[@]}" "${option_type}" )
+					OPTIONIMP_OPTVAR_NAMES=( "${OPTIONIMP_OPTVAR_NAMES[@]}" "${optvar_name}" )
+					OPTIONIMP_OPTVAR_TYPES=( "${OPTIONIMP_OPTVAR_TYPES[@]}" "${optvar_type}" )
+				done
+				
+			done <<< "${BASH_REMATCH[1]}"
+		else
+			echo "Bad OPTIONIMP_CONF configuration line: $line" 1>&2
+			exit 6
+		fi
+	done <<< "$OPTIONIMP_CONF"
+fi
 
 ##
 # BASHimp Functions
@@ -184,26 +254,29 @@ bashimp_find_shell()
 	shopt -u nocasematch
 }
 
-bashimp_option_arg_type()
+bashimp_function_exists()
 {
-	if [ "${BASHIMP_OPTARGS_REQUIRED[$1]}" == 'true' ]; then
-		echo 'required'
-	elif [ "${BASHIMP_OPTARGS_OPTIONAL[$1]}" == 'true' ]; then
-		echo 'optional'
-	elif [ "${BASHIMP_OPTARGS_REQUIRED[$1]}" == 'false' ] && [ "${BASHIMP_OPTARGS_OPTIONAL[$1]}" == 'false' ]; then
-		echo 'boolean'
+	declare -f "$1" > /dev/null
+	return $?
+}
+
+optionimp_optvar_type()
+{
+	if [ -n "${OPTIONIMP_OPTVAR_TYPES[$1]}" ]; then
+		echo "${OPTIONIMP_OPTVAR_TYPES[$1]}"
 	else
-		echo 'empty'
+		echo 'unknown'
 	fi
 }
 
-bashimp_option_check()
+optionimp_option_check()
 {
-	# local array=("${!1}")
 	local option="$1"
 	local optarg="$2"
-	option="$(echo -e "${option}" | sed -e 's/^[[:space:]]*//' | sed -e 's/[[:space:]]*$//')"
-	bashimp_array_find BASHIMP_OPTION_NAMES[@] "$option"
+	if [[ "$option" =~ [[:space:]]*([[:alpha:]_-]+)[[:space:]]* ]]; then
+		option="${BASH_REMATCH[1]}"
+	fi
+	bashimp_array_find OPTIONIMP_OPTION_NAMES[@] "$option"
 	index=$?
 	if [ $index -gt 0 ]; then
 		let "index -= 1"
@@ -212,37 +285,57 @@ bashimp_option_check()
 		exit 2
 	fi
 
-	arg_type=$(bashimp_option_arg_type $index)
-	case "$arg_type" in
-	required)
-		opt_type=$(bashimp_option_type "$optarg")
-		if [ "${opt_type}" == 'NON_SWITCH' ]; then
-			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'="'${optarg}'"'
-		else
-			echo "Option argument for \$${BASHIMP_OPTARG_NAMES[$index]} is required" 1>&2
-			exit 3
-		fi
-		;;
-	optional)
-		opt_type=$(bashimp_option_type "$optarg")
-		if [ "${opt_type}" == 'NON_SWITCH' ]; then
-			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'="'${optarg}'"'
-		else
-			echo eval ${BASHIMP_OPTARG_NAMES[$index]}'=true'
-		fi
-		;;
-	boolean)
-		echo eval "${BASHIMP_OPTARG_NAMES[$index]}=true"
-		;;
-	*)
-		echo "Unknown argument type: ${arg_type}"
-		;;
+	optvar_type=$(optionimp_optvar_type $index)
+	# echo "optionimp_option_check() -- \$option: '$option' -- \$optarg: '$optarg' -- \$optvar_type: '$optvar_type'"
+
+	local result=0
+
+	case "$optvar_type" in
+		required)
+			opt_type=$(optionimp_option_type "$optarg")
+			if [ "${opt_type}" == 'NON_SWITCH' ]; then
+				eval ${OPTIONIMP_OPTVAR_NAMES[$index]}'="'${optarg}'"'
+			else
+				case "${OPTIONIMP_OPTION_TYPES[$index]}" in
+					'long switch')
+						option_name="--${OPTIONIMP_OPTION_NAMES[$index]}"
+						;;
+					'short switch')
+						option_name="-${OPTIONIMP_OPTION_NAMES[$index]}"
+						;;
+					'command')
+						option_name="${OPTIONIMP_OPTION_NAMES[$index]}"
+						;;
+				esac
+				echo "Option argument for ${option_name} is required" 1>&2
+				exit 3
+			fi
+			result=1
+			;;
+		optional)
+			opt_type=$(optionimp_option_type "$optarg")
+			if [ "${opt_type}" == 'NON_SWITCH' ]; then
+				eval ${OPTIONIMP_OPTVAR_NAMES[$index]}'="'${optarg}'"'
+				result=1
+			else
+				eval ${OPTIONIMP_OPTVAR_NAMES[$index]}'=true'
+			fi
+			;;
+		boolean)
+			eval "${OPTIONIMP_OPTVAR_NAMES[$index]}=true"
+			;;
+		*)
+			echo "Unknown argument type: ${optvar_type}" 1>&2
+			exit 8
+			;;
 	esac
 
-	echo "Found ${BASHIMP_OPTION_TYPES[$index]} match for \$${BASHIMP_OPTARG_NAMES[$index]} (${arg_type}) [${index}]"
+	return $result
+
+	# echo "Found ${OPTIONIMP_OPTION_TYPES[$index]} match for \$${OPTIONIMP_OPTVAR_NAMES[$index]} (${arg_type}) [${index}]"
 }
 
-bashimp_option_type()
+optionimp_option_type()
 {
 	local tmp="$1"
 	if [ -n "$tmp" ]; then
@@ -271,9 +364,9 @@ bashimp_option_type()
 	fi
 }
 
-bashimp_option_required()
+optionimp_option_required()
 {
-	# echo "bashimp_option_required() $1"
+	# echo "optionimp_option_required() $1"
 	if [ $1 -lt 2 ]; then
 		echo "echo '  Missing value argument' 1>&2 && exit 3"
 	else
@@ -293,26 +386,35 @@ bashimp_shift_break()
 
 bashimp_show_codes()
 {
-	cat <<- _CAT_
-	$BASHIMP_ERRORS
-	_CAT_
+	echo "$BASHIMP_ERRORS"
+	echo
 }
 
 bashimp_show_help()
 {
-	cat <<- _CAT_
-	$BASHIMP_HELP
-	_CAT_
+	echo "$BASHIMP_HELP"
+	echo
 }
 
 
 if [ $# -eq 0 ]; then
-	bashimp_show_help
-	exit 1
+	
+	if [ $BASHIMP_AS_OPTIMP == true ]; then
+		bashimp_function_exists show_help
+		if [ $? -eq 0 ]; then
+			show_help
+		fi
+	else
+		bashimp_show_help
+		exit 1
+	fi
 fi
 
 if [ $BASHIMP_AS_OPTIMP == true ]; then
-	echo "OPTIONimp Loop"
+
+	##
+	# echo "OPTIONimp Loop"
+	#
 	until [ -z "$1" ]
 	do
 		case "$1" in
@@ -331,38 +433,66 @@ if [ $BASHIMP_AS_OPTIMP == true ]; then
 				;;
 			--*)
 				switch_name="${1:2}"
-				bashimp_option_check "${switch_name}" "$2"
+				optionimp_option_check "${switch_name}" "$2"
 
-				shift
+				if [ $? == 0 ]; then
+					shift
+				else
+					shift
+					shift
+				fi
 				;;
 			-*)
 				switch_name="${1:1}"
-				if [ ${#switch_name} -gt 1 ]; then
-					len=${#switch_name}
-					declare -a switch_list
-					for ((i=0; i < $len; i++))
-					do
-						switch_list[$i]="${switch_name:$i:1}"
-						bashimp_option_check "${switch_name:$i:1}" "$2"
-					done
-				else
-					bashimp_option_check "${switch_name}" "$2"
-				fi
+				len=${#switch_name}
+				declare -a switch_list
+				for ((i=0; i < $len; i++))
+				do
+					switch_list[$i]="${switch_name:$i:1}"
+					optionimp_option_check "${switch_name:$i:1}" "$2"
+					result_tmp=$?
+					if [ -z "$result" ] || [ $result == 0 ]; then
+						result=$result_tmp
+					fi
+				done
 
-				shift
+				if [ $result == 0 ]; then
+					shift
+				else
+					shift
+					shift
+				fi
 				;;
 			*)
-				bashimp_option_check "$1" "$2"
-
-				shift
-				# echo "Unknown option: $1" 1>&2
-				# exit 2
+				optionimp_option_check "$1" "$2"
+				if [ $? == 0 ]; then
+					shift
+				else
+					shift
+					shift
+				fi
 				;;
 		esac
+	done # until [ -z "$1" ]
+
+	##
+	# Make sure boolean option variables are set false if not defined
+	#
+	len=${#OPTIONIMP_OPTVAR_NAMES[@]}
+
+	for i in $(eval echo "{0..$len}"); do
+		optvar_name="${OPTIONIMP_OPTVAR_NAMES[$i]}"
+		optvar_type="${OPTIONIMP_OPTVAR_TYPES[$i]}"
+		eval "value=\$${optvar_name}"
+		if [ -z "$value" ] && [ "$optvar_type" == 'boolean' ]; then
+			eval "${optvar_name}=false"
+		fi
 	done
 else
-	# echo 'BASHimp Loop'
 
+	##
+	# echo 'BASHimp Loop'
+	#
 	old_case=$(shopt nocasematch)
 	shopt -s nocasematch
 
@@ -375,16 +505,16 @@ else
 				;;
 			create | add | init)
 				BASHIMP_INIT="$2"
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			delete | rem | kill | expunge)
 				BASHIMP_KILL="$2"
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			find)
 				bashimp_find_shell $2
 				echo "${BASHIMP_INTERPRETER}"
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			-a | --admin) # Admin Mode. Setup script for all users
 				BASHIMP_ADMIN_MODE=true
@@ -392,11 +522,11 @@ else
 				;;
 			-e | --env)
 				BASHIMP_INTERPRETER="/usr/bin/env $2"
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			-f | --find)
 				bashimp_find_shell $2
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			help | -h | --help)
 				bashimp_show_help
@@ -404,7 +534,7 @@ else
 				;;
 			-i | --interpreter)
 				BASHIMP_INTERPRETER="$2"
-				eval "$(bashimp_option_required $#)"
+				eval "$(optionimp_option_required $#)"
 				;;
 			-p | --posix)
 				bashimp_find_shell 'POSIX'
@@ -423,7 +553,7 @@ else
 				exit 2
 				;;
 		esac
-	done
+	done # until [ -z "$1" ]
 
 	if [[ "$old_case" =~ nocasematch.+off ]]; then
 		shopt -u nocasematch
@@ -536,6 +666,5 @@ elif [ ! -z "$BASHIMP_KILL" ]; then
 		exit 4
 	fi
 
+	exit 0
 fi
-
-exit 0
