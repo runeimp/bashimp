@@ -8,7 +8,7 @@ Script to help starting a BASH script by creating the file and initializing it w
 Initializer
 -----------
 
-### Usage
+### BASHimp Usage
 
 #### Initialize Script
 
@@ -40,10 +40,9 @@ Expunging /Users/mgardner/bin/test-script
 
 The above will ask for verification that you want to expunge the file and then delete the file from your system.
 
-BASHimp Help
-------------
+### BASHimp Help
 
-``` bash
+``` text
 bashimp [OPTIONS]
 
   Commands:
