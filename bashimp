@@ -3,7 +3,7 @@
 # BASHimp - BASH Script Initializer and Option Parser
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.6.0
+# @version  0.7.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,6 +13,7 @@
 ###
 # ChangeLog:
 # ----------
+# 2015-06-15	v0.7.0      Added copy command so BASHimp could copy itself or another script into the user's bin.
 # 2015-06-14	v0.6.0      Initial version with a working OPTIONimp mode.
 # 2015-06-12	v0.5.0      Beginnings of OPTIONimp AKA BASHimp Beast Mode!
 # 2015-06-09	v0.4.0      Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
@@ -30,6 +31,7 @@
 BASHIMP_AS_OPTIMP=`basename "$0"`
 BASHIMP_AUTHOR=""
 BASHIMP_ADMIN_MODE=false
+BASHIMP_COPY=""
 BASHIMP_EDITOR=""
 BASHIMP_END_OPTIONS=false
 BASHIMP_INIT=""
@@ -42,7 +44,8 @@ BASHIMP_PATH="$HOME/bin"
 # Setup version info and help defaults
 #
 if [ "$BASHIMP_AS_OPTIMP" == 'bashimp' ]; then
-	BASHIMP_VER_NUMBER='0.6.0'
+	BASHIMP_SELF="$0"
+	BASHIMP_VER_NUMBER='0.7.0'
 	BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 	BASHIMP_AS_OPTIMP=false
 else
@@ -64,7 +67,7 @@ fi
 #
 # BASHimp Codes
 #
-if [ -z "$BASHIMP_HELP" ]; then
+if [ -z "$BASHIMP_ERRORS" ]; then
 	read -r -d '' BASHIMP_ERRORS <<-EOD
 	$BASHIMP_VER_LABEL
 
@@ -77,30 +80,31 @@ if [ -z "$BASHIMP_HELP" ]; then
 	 6 = Bad line in OPTIONIMP_CONF configuration
 	 7 = Bad option variable type in OPTIONIMP_CONF
 	 8 = Unknown option argument type
-	EOD
+EOD
 fi
 
 #
 # BASHimp Help
 #
 if [ -z "$BASHIMP_HELP" ]; then
-	echo "Defining BASHIMP_HELP since $BASHIMP_HELP"
 	read -r -d '' BASHIMP_HELP <<-EOD
 	$BASHIMP_VER_LABEL
 
 	bashimp [OPTIONS]
 
 	  Commands:
-	    code                    Display exit codes.
-	    init SCRIPT_NAME        Initialize the named BASH script.
-	    kill SCRIPT_NAME        Expunge the named BASH script.
-	                            Will ask for verification.
-	    find INTERPRETER_NAME   Display a local path for the specified
-	                            interpreter name.
-	    help                    Display this help.
+	  	copy SCRIPT_NAME                Copy the named script into the user's bin.
+	  	copy self                       Copy BASHimp into the user's bin.
+	    code                            Display exit codes.
+	    init SCRIPT_NAME                Initialize the named BASH script.
+	    kill SCRIPT_NAME                Expunge the named BASH script.
+	                                    Will ask for verification.
+	    find INTERPRETER_NAME           Display a local path for the specified
+	                                    interpreter name.
+	    help                            Display this help.
 
 	  Options:
-	    -a, --admin                     Use Admin/Multi-User mode.
+	    -a, --admin                     Use Admin/Multi-User path.
 	    -e, --env INTERPRETER_NAME      Use specified interpreter name after
 	                                    /usr/bin/env when initializing the script.
 	    -f, --find INTERPRETER_NAME     Find a local path for the specified
@@ -113,7 +117,7 @@ if [ -z "$BASHIMP_HELP" ]; then
 	    -v, --version                   Print out BASHimp version.
 
 	Be sure to source this script for robust option parsing!
-	EOD
+EOD
 fi
 
 if [ -n "$OPTIONIMP_CONF" ]; then
@@ -181,6 +185,19 @@ fi
 # BASHimp Functions
 #
 
+###
+# Find a value in an array and return it's index
+#
+# === Arguments ===
+#
+# +$1+ The array to search
+# +$2+ The value to match
+#
+# === Returns ===
+#
+# +0 + = No match. Value not found in array.
+# +1\++ = Match found at returned index - 1.
+#
 bashimp_array_find()
 {
 	local array=("${!1}")
@@ -203,55 +220,10 @@ bashimp_array_find()
 	return 0
 }
 
-bashimp_create_script()
+bashimp_doc_show()
 {
-	exec 3<&1
-	exec > "${BASHIMP_PATH}/${BASHIMP_INIT}"
-	echo "#!${BASHIMP_INTERPRETER}"
-	echo "###################"
-	echo "# ${BASHIMP_INIT} v0.1.0"
-	echo "#"
-	[ ! -z "${BASHIMP_AUTHOR}" ] && echo "# @author ${BASHIMP_AUTHOR}"
-	[ ! -z "${BASHIMP_LICENSES}" ] && echo "# @licenses ${BASHIMP_LICENSES}"
-	echo "#"
-	echo "#"
+	echo "$1"
 	echo
-	echo
-	exec 1<&3 3<&-
-}
-
-bashimp_find_shell()
-{
-	shopt -s nocasematch
-
-	case "$1" in
-		POSIX)
-			if [ ! -z "$(which bash)" ]; then
-				BASHIMP_INTERPRETER="$(which bash)"
-			elif [ ! -z "$(which ksh)" ]; then
-				BASHIMP_INTERPRETER="$(which ksh)"
-			elif [ ! -z "$(which posh)" ]; then
-				BASHIMP_INTERPRETER="$(which posh)"
-			elif [ -x '/usr/xpg4/bin/sh' ]; then
-				BASHIMP_INTERPRETER='/usr/xpg4/bin/sh'
-			elif [ ! -z "$(which dash)" ]; then
-				BASHIMP_INTERPRETER="$(which dash)"
-			elif [ ! -z "$(which sh)" ]; then
-				BASHIMP_INTERPRETER="$(which sh)"
-			else
-				BASHIMP_INTERPRETER='/bin/sh'
-			fi
-			;;
-		*)
-			if [ ! -z "$(which "$1")" ]; then
-				BASHIMP_INTERPRETER="$(which "$1")"
-			else
-				BASHIMP_INTERPRETER='/bin/sh'
-			fi
-			;;
-	esac
-
-	shopt -u nocasematch
 }
 
 bashimp_function_exists()
@@ -374,42 +346,91 @@ optionimp_option_required()
 	fi
 }
 
-bashimp_shift_break()
+bashimp_script_copy()
 {
-	# echo "bashimp_shift_break() $1"
-	if [ $1 -gt 1 ]; then
-		echo shift
+	local src_file="$1"
+	local script_name=$(basename "$src_file")
+	local dirname=$(dirname "$src_file")
+	local destination="${BASHIMP_PATH}/${script_name}"
+
+	[ "$dirname" == '.' ] && src_file="$(pwd)/${script_name}"
+
+	# echo "bashimp_script_copy() \$src_file: $src_file"
+	# echo "bashimp_script_copy() \$dirname: $dirname"
+	# echo "bashimp_script_copy() \$destination: $destination"
+
+	if [ -f "${destination}" ]; then
+		echo -n "  A file already exists at that location. Do you want to overwrite it? [yes/NO] (n) "
+		read overwrite
+		case "$overwrite" in
+		[Yy] | [Yy][Ee][Ss])
+			echo "Overwriting ${destination}"
+			cp "${src_file}" "${destination}"
+			;;
+		*)
+			echo "Another time maybe..."
+			exit 0
+			;;
+		esac
 	else
-		echo break
+		cp "${src_file}" "${destination}"
 	fi
 }
 
-bashimp_show_codes()
+bashimp_script_create()
 {
-	echo "$BASHIMP_ERRORS"
+	exec 3<&1
+	exec > "${BASHIMP_PATH}/${BASHIMP_INIT}"
+	echo "#!${BASHIMP_INTERPRETER}"
+	echo "###################"
+	echo "# ${BASHIMP_INIT} v0.1.0"
+	echo "#"
+	[ -n "${BASHIMP_AUTHOR}" ] && echo "# @author ${BASHIMP_AUTHOR}"
+	[ -n "${BASHIMP_LICENSES}" ] && echo "# @licenses ${BASHIMP_LICENSES}"
+	echo "#"
+	echo "#"
 	echo
+	echo
+	exec 1<&3 3<&-
 }
 
-bashimp_show_help()
+bashimp_shell_find()
 {
-	echo "$BASHIMP_HELP"
-	echo
+	shopt -s nocasematch
+
+	case "$1" in
+		POSIX)
+			if [ -n "$(which bash)" ]; then
+				BASHIMP_INTERPRETER="$(which bash)"
+			elif [ -n "$(which ksh)" ]; then
+				BASHIMP_INTERPRETER="$(which ksh)"
+			elif [ -n "$(which posh)" ]; then
+				BASHIMP_INTERPRETER="$(which posh)"
+			elif [ -x '/usr/xpg4/bin/sh' ]; then
+				BASHIMP_INTERPRETER='/usr/xpg4/bin/sh'
+			elif [ -n "$(which dash)" ]; then
+				BASHIMP_INTERPRETER="$(which dash)"
+			elif [ -n "$(which sh)" ]; then
+				BASHIMP_INTERPRETER="$(which sh)"
+			else
+				BASHIMP_INTERPRETER='/bin/sh'
+			fi
+			;;
+		*)
+			if [ -n "$(which "$1")" ]; then
+				BASHIMP_INTERPRETER="$(which "$1")"
+			else
+				BASHIMP_INTERPRETER='/bin/sh'
+			fi
+			;;
+	esac
+
+	shopt -u nocasematch
 }
 
-
-if [ $# -eq 0 ]; then
-	
-	if [ $BASHIMP_AS_OPTIMP == true ]; then
-		bashimp_function_exists show_help
-		if [ $? -eq 0 ]; then
-			show_help
-		fi
-	else
-		bashimp_show_help
-		exit 1
-	fi
-fi
-
+#
+# Option Parsing for OPTIONimp or BASHimp
+#
 if [ $BASHIMP_AS_OPTIMP == true ]; then
 
 	##
@@ -419,7 +440,7 @@ if [ $BASHIMP_AS_OPTIMP == true ]; then
 	do
 		case "$1" in
 			-h | --help)
-				bashimp_show_help
+				bashimp_doc_show "$BASHIMP_HELP"
 				exit 0
 				;;
 			-v | --version)
@@ -500,8 +521,12 @@ else
 	do
 		case "$1" in
 			codes | errors | code)
-				bashimp_show_codes
+				bashimp_doc_show "$BASHIMP_ERRORS"
 				exit 0
+				;;
+			cp | copy)
+				BASHIMP_COPY="$2"
+				eval "$(optionimp_option_required $#)"
 				;;
 			create | add | init)
 				BASHIMP_INIT="$2"
@@ -512,24 +537,24 @@ else
 				eval "$(optionimp_option_required $#)"
 				;;
 			find)
-				bashimp_find_shell $2
+				bashimp_shell_find $2
 				echo "${BASHIMP_INTERPRETER}"
 				eval "$(optionimp_option_required $#)"
 				;;
 			-a | --admin) # Admin Mode. Setup script for all users
 				BASHIMP_ADMIN_MODE=true
-				eval "$(bashimp_shift_break $#)"
+				shift
 				;;
 			-e | --env)
 				BASHIMP_INTERPRETER="/usr/bin/env $2"
 				eval "$(optionimp_option_required $#)"
 				;;
 			-f | --find)
-				bashimp_find_shell $2
+				bashimp_shell_find $2
 				eval "$(optionimp_option_required $#)"
 				;;
 			help | -h | --help)
-				bashimp_show_help
+				bashimp_doc_show "$BASHIMP_HELP"
 				exit 0
 				;;
 			-i | --interpreter)
@@ -537,8 +562,8 @@ else
 				eval "$(optionimp_option_required $#)"
 				;;
 			-p | --posix)
-				bashimp_find_shell 'POSIX'
-				eval "$(bashimp_shift_break $#)"
+				bashimp_shell_find 'POSIX'
+				shift
 				;;
 			-v | --version)
 				echo $BASHIMP_VER_LABEL
@@ -560,23 +585,33 @@ else
 	fi
 fi
 
+
+# Update Path if in Admin/Multi-User Mode
+if [ $BASHIMP_ADMIN_MODE == true ]; then
+	if [ -d '/usr/local/bin' ]; then
+		BASHIMP_PATH='/usr/local/bin' # The standard for multi-user scripts, no?
+	elif [ -d '/usr/local/opt' ]; then
+		BASHIMP_PATH='/usr/local/opt' # @see http://www.extellisys.com/articles/usr-local-opt
+	elif [ -d '/opt/bin' ]; then
+		BASHIMP_PATH='/opt/bin'       # I've seen this used somewhere...
+	else
+		BASHIMP_PATH='/usr/local/bin' # Create this if nothing else exists
+	fi
+fi
+
+
 #
 # Do some work
 #
-if [ ! -z "$BASHIMP_INIT" ]; then
+if [ -n "$BASHIMP_COPY" ]; then
 
-	# Update Init Path if in Admin/Multi-User Mode
-	if [ $BASHIMP_ADMIN_MODE == true ]; then
-		if [ -d '/usr/local/bin' ]; then
-			BASHIMP_PATH='/usr/local/bin' # The standard for multi-user scripts, no?
-		elif [ -d '/usr/local/opt' ]; then
-			BASHIMP_PATH='/usr/local/opt' # @see http://www.extellisys.com/articles/usr-local-opt
-		elif [ -d '/opt/bin' ]; then
-			BASHIMP_PATH='/opt/bin'       # I've seen this used somewhere...
-		else
-			BASHIMP_PATH='/usr/local/bin' # Create this if nothing else exists
-		fi
+	if [ "$BASHIMP_COPY" == 'self' ]; then
+		bashimp_script_copy "$BASHIMP_SELF"
+	else
+		bashimp_script_copy "$BASHIMP_COPY"
 	fi
+
+elif [ -n "$BASHIMP_INIT" ]; then
 
 	# Create bin directory if it doesn't already exist
 	if [ ! -d "$BASHIMP_PATH" ]; then
@@ -585,7 +620,7 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 
 	# Create script or ask if it already exists
 	if [ ! -f "${BASHIMP_PATH}/$BASHIMP_INIT" ]; then
-		bashimp_create_script
+		bashimp_script_create
 	else
 		
 		printf "  The file $BASHIMP_INIT already exists. Do you wish to continue? [yes/NO] (n) "
@@ -594,7 +629,7 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 		case "$overwrite" in
 		[Yy] | [Yy][Ee][Ss])
 			echo "Overwriting $BASHIMP_INIT"
-			bashimp_create_script
+			bashimp_script_create
 			;;
 		*)
 			echo "Another time maybe..."
@@ -610,13 +645,13 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 
 	# Choose script in editor if none defined
 	if [ -z "${BASHIMP_EDITOR}" ]; then
-		if [ ! -z "$VISUAL" ]; then
+		if [ -n "$VISUAL" ]; then
 			BASHIMP_EDITOR="$VISUAL"
-		elif [ ! -z "$GIT_EDITOR" ]; then
+		elif [ -n "$GIT_EDITOR" ]; then
 			BASHIMP_EDITOR="$GIT_EDITOR"
-		elif [ ! -z "$EDITOR" ]; then
+		elif [ -n "$EDITOR" ]; then
 			BASHIMP_EDITOR="$EDITOR"
-		elif [ ! -z "`which subl`" ]; then
+		elif [ -n "`which subl`" ]; then
 			BASHIMP_EDITOR=`which subl`
 		else
 			BASHIMP_EDITOR=`which vi`
@@ -624,14 +659,14 @@ if [ ! -z "$BASHIMP_INIT" ]; then
 	fi
 
 	# Launch script in editor
-	if [ ! -z "${BASHIMP_EDITOR}" ]; then
+	if [ -n "${BASHIMP_EDITOR}" ]; then
 		"${BASHIMP_EDITOR}" "${BASHIMP_PATH}/${BASHIMP_INIT}"
 	else
 		echo "No BASHIMP_EDITOR defined or found." 1>&2
 		exit 5
 	fi
 
-elif [ ! -z "$BASHIMP_KILL" ]; then
+elif [ -n "$BASHIMP_KILL" ]; then
 
 	# Update Init Path if in Admin/Multi-User Mode
 	if [ $BASHIMP_ADMIN_MODE == true ]; then
@@ -648,7 +683,7 @@ elif [ ! -z "$BASHIMP_KILL" ]; then
 
 	# Expunge script
 	if [ -f "${BASHIMP_PATH}/${BASHIMP_KILL}" ]; then
-		printf "  Are you sure you want to expunge $BASHIMP_KILL from this computer [yes/NO] (n) "
+		echo -n "  Are you sure you want to expunge $BASHIMP_KILL from this computer [yes/NO] (n) "
 		read expunge
 		case "$expunge" in
 		[Yy] | [Yy][Ee][Ss])

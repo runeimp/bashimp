@@ -3,7 +3,7 @@ BASHimp
 
 BASH Script Initializer and Option Parser
 
-Script to help starting a BASH script by creating the file and initializing it with some useful content.
+Script to help start a BASH script by creating the file and initializing it with some useful content. And can also be sourced into your script to parse command line options similar to how [Commander](https://github.com/commander-rb/commander) for Ruby works.
 
 Initializer
 -----------
@@ -28,7 +28,17 @@ The above will initialize a file named test-script with the following contents
 
 ```
 
-The file will automatically be opened in the editor specified by your VISUAL environment variable.
+What actually happens above:
+
+1. Finds your user's bin directory
+2. Checks if a file with the same name exists in that directory
+    * If not, create the file
+    * If a file exists `bashimp` will ask if you wish to overwrite the file.
+3. Adds the above content example to the file
+4. Ensures the file is executable by the user
+5. Finds your favorite text editor and opens the file for you to get started scripting!
+
+The file will automatically be opened in the editor specified by your `VISUAL`, `GIT_EDITOR`, or `EDITOR` environment variables. If none of those variables are defined it will look for [Sublime Text](http://www.sublimetext.com/)'s `subl` command line app and then `vi`. If none of these can be found then the file is simply left as is.
 
 #### Expunge Script
 
@@ -129,14 +139,14 @@ This behavior should be connsistent in all versions of BASH that support arrays,
 
 ### Plans for the future
 
-* [X] Allow specification of Shebangs other than `#!/usr/bin/env bash`
-* [X] Parse a configuration file for defaults
-* [X] Also check `EDITOR`, and `GIT_EDITOR` if `VISUAL` is not defined in your environment
-* [X] Add functionality for extended option parsing when sourced into another script
+* [x] Allow specification of Shebangs other than `#!/usr/bin/env bash`
+* [x] Parse a configuration file for defaults
+* [x] Also check `EDITOR`, and `GIT_EDITOR` if `VISUAL` is not defined in your environment
+* [x] Add functionality for extended option parsing when sourced into another script
 * [ ] Auto build help docs based on `OPTIONIMP_CONF`
 * [ ] Enable BASHimp to create user configuration file with defaults
 * [ ] Add switch to include BASHimp in script during creation process for option parsing
-* [ ] Add command to copy an existing script into the user or multi-user bin
+* [x] Add command to copy an existing script into the user or multi-user bin
 * [ ] Setup editing of the header comment template
 * [ ] Split OPTIONimp into it's own script? (I'm debating this one.)
 
