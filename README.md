@@ -135,6 +135,22 @@ $sexy_time=true    # This switch is a boolean type and was used on the command l
 
 This behavior should be connsistent in all versions of BASH that support arrays, regular expression matching, and the `read` internal command. Which _should_ be BASH v3 as a minimum. Though I've not tested this as yet. There are no external dependencies beyond BASH.
 
+OPTIONimp Settings
+------------------
+
+| function | Option Type | Option Variable | Option Default | Option Description |
+| -------- | :---------: | :-------------: | :------------: | ------------------ |
+                   |
+# action:	switches	function		(argument)		(default)		description
+# array:	switches	(variable)		(delimiter)		(default)		description
+# boolean:	switches	(variable)		default:false	description
+# float:	switches	(variable)		(default)		description
+# integer:	switches	(variable)		(default)		description
+# number:	switches	(variable)		(default)		description
+# regex:	switches	(variable)		regexp			(default)		description
+# string:	switches	(variable)		(default)		description
+
+
  * * *
 
 ### Plans for the future

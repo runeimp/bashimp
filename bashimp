@@ -3,7 +3,7 @@
 # BASHimp - BASH Script Initializer and Option Parser
 #
 # @author   RuneImp <runeimp@gmail.com>
-# @version  0.7.0
+# @version  0.8.0
 # @license  http://opensource.org/licenses/MIT
 ###
 # Installation
@@ -13,14 +13,22 @@
 ###
 # ChangeLog:
 # ----------
-# 2015-06-15	v0.7.0      Added copy command so BASHimp could copy itself or another script into the user's bin.
-# 2015-06-14	v0.6.0      Initial version with a working OPTIONimp mode.
-# 2015-06-12	v0.5.0      Beginnings of OPTIONimp AKA BASHimp Beast Mode!
-# 2015-06-09	v0.4.0      Now does extensive checking for your prefered editor if one wasn't specified in your bashimp.cfg.
-# 2015-06-08	v0.3.0      Added the find command. Added the -f and --find, -i and --interpreter, and -p and --posix switches.
-#                           Added the loading of a user configuration file. Updated help.
-# 2015-06-07	v0.2.0      Added expunge to the command list
-# 2015-06-07	v0.1.0      Initial script creation
+# 2015-06-16    v0.8.0		Added setup command so BASHimp could create the
+#                           default user's config and make sure bashimp exists
+#                           in the user's PATH. Updated bashimp_script_create's
+#                           template.
+# 2015-06-15    v0.7.0      Added copy command so BASHimp could copy itself or
+#                           another script into the user's bin.
+# 2015-06-14    v0.6.0      Initial version with a working OPTIONimp mode.
+# 2015-06-12    v0.5.0      Beginnings of OPTIONimp AKA BASHimp Beast Mode!
+# 2015-06-09    v0.4.0      Now does extensive checking for your prefered editor
+#                           if one wasn't specified in your bashimp.cfg.
+# 2015-06-08    v0.3.0      Added the find command. Added the -f and --find, -i
+#                           and --interpreter, and -p and --posix switches.
+#                           Added the loading of a user configuration file.
+#                           Updated help.
+# 2015-06-07    v0.2.0      Added expunge to the command list
+# 2015-06-07    v0.1.0      Initial script creation
 # 
 ###
 # ToDo:
@@ -39,13 +47,15 @@ BASHIMP_INTERPRETER="/usr/bin/env bash"
 BASHIMP_LICENSES=""
 BASHIMP_KILL=""
 BASHIMP_PATH="$HOME/bin"
+BASHIMP_PROMPT_PREFIX="  "
+BASHIMP_SETUP=""
 
 #
 # Setup version info and help defaults
 #
 if [ "$BASHIMP_AS_OPTIMP" == 'bashimp' ]; then
 	BASHIMP_SELF="$0"
-	BASHIMP_VER_NUMBER='0.7.0'
+	BASHIMP_VER_NUMBER='0.8.0'
 	BASHIMP_VER_LABEL="BASHimp v$BASHIMP_VER_NUMBER"
 	BASHIMP_AS_OPTIMP=false
 else
@@ -80,6 +90,8 @@ if [ -z "$BASHIMP_ERRORS" ]; then
 	 6 = Bad line in OPTIONIMP_CONF configuration
 	 7 = Bad option variable type in OPTIONIMP_CONF
 	 8 = Unknown option argument type
+	 9 = No source path provided to search in
+	10 = The bin path BASHimp was looking for was not in your PATH
 EOD
 fi
 
@@ -96,12 +108,13 @@ if [ -z "$BASHIMP_HELP" ]; then
 	  	copy SCRIPT_NAME                Copy the named script into the user's bin.
 	  	copy self                       Copy BASHimp into the user's bin.
 	    code                            Display exit codes.
-	    init SCRIPT_NAME                Initialize the named BASH script.
-	    kill SCRIPT_NAME                Expunge the named BASH script.
-	                                    Will ask for verification.
 	    find INTERPRETER_NAME           Display a local path for the specified
 	                                    interpreter name.
 	    help                            Display this help.
+	    init SCRIPT_NAME                Initialize the named BASH script.
+	    kill SCRIPT_NAME                Expunge the named BASH script.
+	                                    Will ask for verification.
+	    setup                           Setup the user's config file and make sure bashimp is in the user's path
 
 	  Options:
 	    -a, --admin                     Use Admin/Multi-User path.
@@ -125,6 +138,7 @@ if [ -n "$OPTIONIMP_CONF" ]; then
 
 	unset OPTIONIMP_OPTION_NAMES
 	declare -a OPTIONIMP_OPTION_NAMES
+	declare -a OPTIONIMP_ARGUMENTS
 	while read -r line
 	do
 		# echo "\$line: $line"
@@ -232,6 +246,34 @@ bashimp_function_exists()
 	return $?
 }
 
+bashimp_help()
+{
+	bashimp_doc_show "$BASHIMP_HELP"
+}
+
+
+bashimp_input_yesno()
+{
+	promp="$1"
+	yes="$2"
+	no="$3"
+
+	read -r -p "${BASHIMP_PROMPT_PREFIX}${promp} [yes/NO] (n) " response
+
+	shopt -s nocasematch
+	if [[ "$response" =~ ^(y|yes)$ ]]; then
+		[ -n "$yes" ] && echo "$yes"
+		result=0
+	else
+		[ -n "$no" ] && echo "$no"
+		result=1
+	fi
+	shopt -u nocasematch
+
+	return $result
+}
+
+
 optionimp_optvar_type()
 {
 	if [ -n "${OPTIONIMP_OPTVAR_TYPES[$1]}" ]; then
@@ -253,8 +295,10 @@ optionimp_option_check()
 	if [ $index -gt 0 ]; then
 		let "index -= 1"
 	else
-		echo "Unknown option: '$option'"
-		exit 2
+		# echo "Unknown option: '$option'"
+		# exit 2
+		OPTIONIMP_ARGUMENTS=( "${OPTIONIMP_ARGUMENTS[@]}" "${option}" )
+		return 0
 	fi
 
 	optvar_type=$(optionimp_optvar_type $index)
@@ -298,7 +342,8 @@ optionimp_option_check()
 			;;
 		*)
 			echo "Unknown argument type: ${optvar_type}" 1>&2
-			exit 8
+			# exit 8
+			OPTIONIMP_ARGUMENTS=( "${OPTIONIMP_ARGUMENTS[@]}" "${optarg}" )
 			;;
 	esac
 
@@ -346,6 +391,21 @@ optionimp_option_required()
 	fi
 }
 
+bashimp_path_in_path()
+{
+	local result=1
+	# echo "bashimp_path_in_path() -- \$1: $1 -- \$PATH: $PATH"
+	if [ -z "$1" ]; then
+		echo "bashimp_path_in_path() No source path provided to search in" 1>&2
+		exit 9
+	elif [[ ":${PATH}:" == *":$1:"* ]]; then
+		# echo "bashimp_path_in_path() Found source path"
+		result=0
+	fi
+
+	return $result
+}
+
 bashimp_script_copy()
 {
 	local src_file="$1"
@@ -360,18 +420,12 @@ bashimp_script_copy()
 	# echo "bashimp_script_copy() \$destination: $destination"
 
 	if [ -f "${destination}" ]; then
-		echo -n "  A file already exists at that location. Do you want to overwrite it? [yes/NO] (n) "
-		read overwrite
-		case "$overwrite" in
-		[Yy] | [Yy][Ee][Ss])
-			echo "Overwriting ${destination}"
-			cp "${src_file}" "${destination}"
-			;;
-		*)
-			echo "Another time maybe..."
+		bashimp_input_yesno "A file already exists at that location. Do you want to overwrite it?" "Overwriting $destination" "Another time maybe..."
+		if [ $? -eq 0 ]; then
+			$(which cp) "${src_file}" "${destination}" # Using subcommand to make sure cp isn't aliased with -i
+		else
 			exit 0
-			;;
-		esac
+		fi
 	else
 		cp "${src_file}" "${destination}"
 	fi
@@ -427,6 +481,15 @@ bashimp_shell_find()
 
 	shopt -u nocasematch
 }
+
+# BASHimp Function Aliases
+shopt -s expand_aliases  # Enables alias expansion.
+
+bashimp_function_exists agree
+if [ $? -eq 0 ]; then
+	alias agree="bashimp_input_yesno"
+fi
+
 
 #
 # Option Parsing for OPTIONimp or BASHimp
@@ -538,8 +601,13 @@ else
 				;;
 			find)
 				bashimp_shell_find $2
-				echo "${BASHIMP_INTERPRETER}"
+				# echo "${BASHIMP_INTERPRETER}"
 				eval "$(optionimp_option_required $#)"
+				;;
+			setup)
+				# echo 'BASHimp Setup'
+				BASHIMP_SETUP=true
+				shift
 				;;
 			-a | --admin) # Admin Mode. Setup script for all users
 				BASHIMP_ADMIN_MODE=true
@@ -623,19 +691,14 @@ elif [ -n "$BASHIMP_INIT" ]; then
 		bashimp_script_create
 	else
 		
-		printf "  The file $BASHIMP_INIT already exists. Do you wish to continue? [yes/NO] (n) "
-		overwrite='no'
-		read overwrite
-		case "$overwrite" in
-		[Yy] | [Yy][Ee][Ss])
+		bashimp_input_yesno "The file $BASHIMP_INIT already exists. Do you wish to continue?" "Overwriting $BASHIMP_INIT" "Another time maybe..."
+		if [ $? -eq 0 ]; then
 			echo "Overwriting $BASHIMP_INIT"
 			bashimp_script_create
-			;;
-		*)
-			echo "Another time maybe..."
+		else
 			exit 0
-			;;
-		esac
+		fi
+
 	fi
 
 	# Fix permissions if not already executable
@@ -683,23 +746,50 @@ elif [ -n "$BASHIMP_KILL" ]; then
 
 	# Expunge script
 	if [ -f "${BASHIMP_PATH}/${BASHIMP_KILL}" ]; then
-		echo -n "  Are you sure you want to expunge $BASHIMP_KILL from this computer [yes/NO] (n) "
-		read expunge
-		case "$expunge" in
-		[Yy] | [Yy][Ee][Ss])
-			echo "Expunging ${BASHIMP_PATH}/${BASHIMP_KILL}"
+		bashimp_input_yesno "Are you sure you want to expunge $BASHIMP_KILL from this computer" "Expunging ${BASHIMP_PATH}/${BASHIMP_KILL}" "Another time maybe..."
+		if [ $? -eq 0 ]; then
 			rm "${BASHIMP_PATH}/${BASHIMP_KILL}"
-			;;
-		*)
-			echo "Another time maybe..."
-			exit 0
-			;;
-		esac
+		fi
 	else
 		echo "File not found"
 		echo "Expected to find the script at ${BASHIMP_PATH}/${BASHIMP_KILL}"
 		exit 4
 	fi
 
-	exit 0
+elif [ -n "$BASHIMP_SETUP" ]; then
+	
+
+	bashimp_path_in_path "$BASHIMP_PATH"
+	if [ $? -ne 0 ]; then
+		echo "Setup found BASHIMP_PATH missing from your PATH" 1>&2
+		exit 10
+	# else
+	# 	echo "Setup found BASHIMP_PATH within your PATH"
+	fi
+
+	if [ ! -d "${HOME}/.config" ]; then
+		bashimp_input_yesno "The directory ${HOME}/.config was not found. Shall I create it for you?" "" "Another time maybe..."
+		if [ $? -eq 0 ]; then
+			mkdir -p "${HOME}/.config"
+		else
+			exit 0
+		fi
+	fi # end if [ ! -d "${HOME}/.config" ]
+
+	if [ -f "${HOME}/.config/bashimp.cfg" ]; then
+		bashimp_input_yesno "The file ${HOME}/.config/bashimp.cfg was found. Shall I overwrite it for you?" "" "Another time maybe..."
+		if [ $? -eq 0 ]; then
+			echo "Overwriting ${HOME}/.config/bashimp.cfg"
+		else
+			exit 0
+		fi
+	else
+		echo "Creating ${HOME}/.config/bashimp.cfg"
+	fi
+
 fi
+
+
+
+
+
